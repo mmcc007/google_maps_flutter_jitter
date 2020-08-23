@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_maps_flutter_jitter/src/route.dart';
+import 'package:google_maps_flutter_jitter/src/ticker.dart';
 
 void main() => runApp(MyApp());
 
@@ -21,39 +23,80 @@ class MapSample extends StatefulWidget {
 }
 
 class MapSampleState extends State<MapSample> {
-  Completer<GoogleMapController> _controller = Completer();
+  Set<Polyline> _polylines = {};
+  Polyline _route;
 
   static final CameraPosition _kGooglePlex = CameraPosition(
     target: LatLng(37.42796133580664, -122.085749655962),
     zoom: 14.4746,
   );
 
-  static final CameraPosition _kLake = CameraPosition(
-      bearing: 192.8334901395799,
-      target: LatLng(37.43296265331129, -122.08832357078792),
-      tilt: 59.440717697143555,
-      zoom: 19.151926040649414);
-
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
       body: GoogleMap(
-        mapType: MapType.hybrid,
+        mapType: MapType.normal,
         initialCameraPosition: _kGooglePlex,
-        onMapCreated: (GoogleMapController controller) {
-          _controller.complete(controller);
-        },
+        polylines: _polylines,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _goToTheLake,
-        label: Text('To the lake!'),
-        icon: Icon(Icons.directions_boat),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          FloatingActionButton(
+            onPressed: _animateRoute,
+            child: Icon(Icons.slow_motion_video),
+          ),
+          FloatingActionButton(
+            onPressed: _showRoute,
+            child: Icon(Icons.directions),
+          ),
+        ],
       ),
     );
   }
 
-  Future<void> _goToTheLake() async {
-    final GoogleMapController controller = await _controller.future;
-    controller.animateCamera(CameraUpdate.newCameraPosition(_kLake));
+  Future<void> _showRoute() async {
+    if (_route == null) {
+      // load the route from google directions api
+      final route = await loadRoute();
+      _route = Polyline(
+        polylineId: PolylineId('route'),
+        points: route,
+        width: 1,
+        color: Colors.blue,
+      );
+      _polylines = {_route};
+    } else {
+      _route = null;
+      _polylines = {};
+    }
+    setState(() {});
+  }
+
+  // Should be able to observe jitter on the device screen
+  // as the animation proceeds.
+  Future<void> _animateRoute() async {
+    // load the intperpolated steps previously generated for the route
+    // usingn a ticker from a flutter animator
+    final steps = await loadSteps();
+    // approximate the ticker from the flutter animator that was used
+    // to generate the steps
+    final duration = 5000; // milliseconds
+    final interval = (duration / steps.length).round();
+    final numTicks = (duration / interval).round();
+    await for (final tick in Ticker().tick(numTicks, interval)) {
+      print(tick);
+      final stepPoly = Polyline(
+        polylineId: PolylineId('steps'),
+        points: steps,
+        width: 3,
+        color: Colors.red,
+      );
+      if (_route != null)
+        _polylines = {_route, stepPoly};
+      else
+        _polylines = {stepPoly};
+      setState(() {});
+    }
   }
 }
