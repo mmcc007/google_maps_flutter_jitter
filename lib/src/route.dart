@@ -10,8 +10,8 @@ Future<List<LatLng>> loadSteps() async {
   return await _loadLatLngs('assets/data/steps.csv');
 }
 
-Future _loadLatLngs(String fileName) async {
+Future<List<LatLng>> _loadLatLngs(String fileName) async {
   final buffer = await rootBundle.loadString(fileName);
-  final csv = CsvToListConverter().convert(buffer);
+  final csv = CsvToListConverter().convert(buffer, eol: '\n');
   return csv.map((e) => LatLng(e[0], e[1])).toList();
 }
