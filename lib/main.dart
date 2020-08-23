@@ -88,7 +88,7 @@ class MapSampleState extends State<MapSample> {
       print(tick);
       final stepPoly = Polyline(
         polylineId: PolylineId('steps'),
-        points: steps,
+        points: steps.sublist(0, tick),
         width: 3,
         color: Colors.red,
       );
