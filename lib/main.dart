@@ -125,23 +125,35 @@ class MapSampleState extends State<MapSample> {
   void _showMarkers() {
     // add markers
     final routeMarkers = _route.points
+        .asMap()
         .map(
-          (e) => Marker(
-            markerId: MarkerId(e.toString()),
-            position: e,
-            icon: mapMarkerIcon,
+          (key, value) => MapEntry(
+            key,
+            Marker(
+              markerId: MarkerId('route: $value'),
+              position: value,
+              icon: mapMarkerIcon,
+              infoWindow: InfoWindow(title: 'route[$key]: $value'),
+            ),
           ),
         )
+        .values
         .toSet();
+
     final stepMarkers = _steps.points
+        .asMap()
         .map(
-          (e) => Marker(
-            markerId: MarkerId(e.toString()),
-            position: e,
-            anchor: Offset(0.5, 0.5),
-            icon: circleIcon,
+          (key, value) => MapEntry(
+            key,
+            Marker(
+              markerId: MarkerId('step: $value'),
+              position: value,
+              icon: circleIcon,
+              infoWindow: InfoWindow(title: 'step[$key]: $value'),
+            ),
           ),
         )
+        .values
         .toSet();
     _markers = stepMarkers.union(routeMarkers);
     setState(() {});
