@@ -24,7 +24,11 @@ class MapSample extends StatefulWidget {
 
 class MapSampleState extends State<MapSample> {
   Set<Polyline> _polylines = {};
+  Set<Marker> _markers = {};
   Polyline _route;
+  Polyline _steps;
+  BitmapDescriptor circleIcon;
+  BitmapDescriptor mapMarkerIcon;
 
   static final CameraPosition _kGooglePlex = CameraPosition(
     target: LatLng(37.42796133580664, -122.085749655962),
@@ -32,16 +36,32 @@ class MapSampleState extends State<MapSample> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    getBytesFromAsset('assets/images/circle-outline-16.png', 20)
+        .then((onValue) {
+      circleIcon = BitmapDescriptor.fromBytes(onValue);
+    });
+    getBytesFromAsset('assets/images/map-marker-2-16.png', 30).then((onValue) {
+      mapMarkerIcon = BitmapDescriptor.fromBytes(onValue);
+    });
+  }
+
   Widget build(BuildContext context) {
     return new Scaffold(
       body: GoogleMap(
         mapType: MapType.normal,
         initialCameraPosition: _kGooglePlex,
         polylines: _polylines,
+        markers: _markers,
       ),
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
+          FloatingActionButton(
+            onPressed: _showMarkers,
+            child: Icon(Icons.location_on),
+          ),
           FloatingActionButton(
             onPressed: _animateRoute,
             child: Icon(Icons.slow_motion_video),
@@ -62,13 +82,14 @@ class MapSampleState extends State<MapSample> {
       _route = Polyline(
         polylineId: PolylineId('route'),
         points: route,
-        width: 1,
-        color: Colors.blue,
+        width: 3,
+        color: Colors.black,
       );
       _polylines = {_route};
     } else {
       _route = null;
       _polylines = {};
+      _markers = {};
     }
     setState(() {});
   }
@@ -85,18 +106,44 @@ class MapSampleState extends State<MapSample> {
     final interval = (duration / steps.length).round();
     final numTicks = (duration / interval).round();
     await for (final tick in Ticker().tick(numTicks, interval)) {
-      print(tick);
-      final stepPoly = Polyline(
+      // print(tick);
+      _steps = Polyline(
         polylineId: PolylineId('steps'),
         points: steps.sublist(0, tick),
         width: 3,
-        color: Colors.red,
+        color: Colors.grey,
       );
       if (_route != null)
-        _polylines = {_route, stepPoly};
+        _polylines = {_route, _steps};
       else
-        _polylines = {stepPoly};
+        _polylines = {_steps};
+      _markers = {};
       setState(() {});
     }
+  }
+
+  void _showMarkers() {
+    // add markers
+    final routeMarkers = _route.points
+        .map(
+          (e) => Marker(
+            markerId: MarkerId(e.toString()),
+            position: e,
+            icon: mapMarkerIcon,
+          ),
+        )
+        .toSet();
+    final stepMarkers = _steps.points
+        .map(
+          (e) => Marker(
+            markerId: MarkerId(e.toString()),
+            position: e,
+            anchor: Offset(0.5, 0.5),
+            icon: circleIcon,
+          ),
+        )
+        .toSet();
+    _markers = stepMarkers.union(routeMarkers);
+    setState(() {});
   }
 }
